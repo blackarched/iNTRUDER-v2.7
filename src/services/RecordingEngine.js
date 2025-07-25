@@ -1,8 +1,14 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const promClient = require('prom-client');
 const logger = require('./logger');
 const db = require('./db');
+
+const recordingSessions = new promClient.Gauge({
+  name: 'recording_sessions',
+  help: 'Number of active recording sessions',
+});
 
 class RecordingEngine {
   constructor() {
@@ -14,6 +20,7 @@ class RecordingEngine {
       logger.warn(`Recording session for node ${nodeId} is already active.`);
       return;
     }
+    recordingSessions.inc();
 
     try {
       const { rows } = await db.query('SELECT * FROM security_nodes WHERE node_id = $1', [nodeId]);
@@ -74,6 +81,7 @@ class RecordingEngine {
 
     session.process.kill('SIGINT');
     logger.info(`Stopped recording for node ${nodeId}.`);
+    recordingSessions.dec();
   }
 }
 

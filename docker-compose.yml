@@ -20,9 +20,9 @@ services:
     networks: [nexus-net]
     depends_on:
       nexus-db: { condition: service_healthy }
-      redis: { condition: service_started }
+      redis: { condition: service_healthy }
     healthcheck:
-      test: "node -e \"require('https').get('https://localhost:8443/api/health', { rejectUnauthorized: false }, (res) => res.statusCode === 200 ? process.exit(0) : process.exit(1)).on('error', () => process.exit(1))\""
+      test: ["CMD-SHELL", "curl --fail https://localhost:8443/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -47,6 +47,11 @@ services:
     container_name: nexus-redis
     restart: unless-stopped
     networks: [nexus-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   motion-detector:
     build: ./motion-detection

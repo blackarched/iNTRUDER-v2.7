@@ -2,10 +2,26 @@ require('dotenv').config();
 const https = require('https');
 const fs = require('fs');
 const WebSocket = require('ws');
+const promClient = require('prom-client');
 const app = require('./src/app');
 const config = require('./config');
 const logger = require('./src/services/logger');
 const redis = require('./src/services/redis');
+
+const activeWebsocketConnections = new promClient.Gauge({
+  name: 'active_websocket_connections',
+  help: 'Number of active WebSocket connections',
+});
+
+const recordingSessions = new promClient.Gauge({
+  name: 'recording_sessions',
+  help: 'Number of active recording sessions',
+});
+
+const motionEvents = new promClient.Counter({
+  name: 'motion_events_total',
+  help: 'Total number of motion events',
+});
 
 class NexusCommandCenter {
   constructor() {
@@ -35,12 +51,14 @@ class NexusCommandCenter {
     const wss = new WebSocket.Server({ server: this.server });
     wss.on('connection', (ws) => {
       logger.info('Frontend HUD connected via WebSocket.');
+      activeWebsocketConnections.inc();
       ws.on('message', (message) => {
         logger.debug(`Received command from HUD: ${message}`);
         // Handle incoming commands from the frontend
       });
       ws.on('close', () => {
         logger.info('Frontend HUD disconnected.');
+        activeWebsocketConnections.dec();
       });
     });
     logger.info('WebSocket server initialized and attached to HTTPS server.');
@@ -50,6 +68,7 @@ class NexusCommandCenter {
   initializeRedisSubscription() {
     const redisSubscriber = redis.duplicate();
     redisSubscriber.subscribe('motion_events', (message) => {
+      motionEvents.inc();
       const event = JSON.parse(message);
       this.wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {

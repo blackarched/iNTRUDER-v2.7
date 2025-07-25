@@ -1,0 +1,47 @@
+groups:
+- name: nexus-alerts
+  rules:
+  - alert: HighRequestLatency
+    expr: http_request_duration_ms_bucket{le="1000"} > 0.5
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: High request latency
+      description: The 99th percentile of request latency is above 1s.
+
+  - alert: HighErrorRate
+    expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: High error rate
+      description: The 5xx error rate is above 5%.
+
+  - alert: NoMotionEvents
+    expr: increase(motion_events_total[1h]) == 0
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: No motion events
+      description: No motion events have been detected in the last hour.
+
+  - alert: RedisDown
+    expr: redis_up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Redis is down
+      description: The Redis service is down.
+
+  - alert: PostgresDown
+    expr: pg_up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: PostgreSQL is down
+      description: The PostgreSQL service is down.

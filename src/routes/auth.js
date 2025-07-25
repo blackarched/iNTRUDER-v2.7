@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const {
   login,
   register,
@@ -11,6 +12,12 @@ const { authSchema } = require('../validators/authValidator');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: 'Too many login attempts from this IP, please try again after 15 minutes',
+});
 
 /**
  * @openapi
@@ -58,7 +65,7 @@ router.post('/register', validate(authSchema.register), register);
  * '200':
  * description: Login successful, returns JWT token
  */
-router.post('/login', validate(authSchema.login), login);
+router.post('/login', loginLimiter, validate(authSchema.login), login);
 
 /**
  * @openapi

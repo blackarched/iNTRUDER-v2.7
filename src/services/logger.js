@@ -1,5 +1,8 @@
 const winston = require('winston');
 require('winston-daily-rotate-file');
+const { AsyncLocalStorage } = require('async_hooks');
+
+const asyncLocalStorage = new AsyncLocalStorage();
 
 const { combine, timestamp, json, colorize, align, printf } = winston.format;
 
@@ -32,16 +35,25 @@ const logger = winston.createLogger({
   ]
 });
 
+const addRequestId = winston.format((info) => {
+  const requestId = asyncLocalStorage.getStore();
+  if (requestId) {
+    info.requestId = requestId;
+  }
+  return info;
+});
+
 // For development, add a human-readable console logger
 if (process.env.NODE_ENV !== 'production') {
   logger.add(new winston.transports.Console({
     format: combine(
+      addRequestId(),
       colorize(),
       timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
       align(),
-      printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
+      printf(info => `${info.timestamp} [${info.requestId || 'N/A'}] ${info.level}: ${info.message}`)
     ),
   }));
 }
 
-module.exports = logger;
+module.exports = { logger, asyncLocalStorage };

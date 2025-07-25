@@ -1,16 +1,21 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
+const helmet = 'helmet';
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const promClient = require('prom-client');
 const config = require('../config');
-const logger = require('./services/logger');
+const { logger } = require('./services/logger');
 const apiRouter = require('./routes');
 const errorMiddleware = require('./middleware/errorMiddleware');
+const sanitizeMiddleware = require('./middleware/sanitizationMiddleware');
+const requestIdMiddleware = require('./middleware/requestIdMiddleware');
 
 const app = express();
+
+app.use(requestIdMiddleware);
+app.use(sanitizeMiddleware);
 
 // Security Middleware
 app.use(
@@ -18,8 +23,8 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            scriptSrc: ["'self'", "https://fonts.googleapis.com"],
+            styleSrc: ["'self'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", `wss://${config.corsOrigin}`],
@@ -64,6 +69,24 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Metrics Endpoint
 promClient.collectDefaultMetrics();
+
+const httpRequestDurationMicroseconds = new promClient.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'code'],
+  buckets: [50, 100, 200, 300, 400, 500, 1000],
+});
+
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    httpRequestDurationMicroseconds
+      .labels(req.method, req.route ? req.route.path : req.path, res.statusCode)
+      .observe(Date.now() - res.locals.startTime);
+  });
+  res.locals.startTime = Date.now();
+  next();
+});
+
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', promClient.register.contentType);
   res.end(await promClient.register.metrics());
