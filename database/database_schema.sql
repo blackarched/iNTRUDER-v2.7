@@ -61,6 +61,14 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON system_users(username);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON surveillance_events(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_events_node_id_type ON surveillance_events(node_id, event_type);
 
+-- User MFA Secrets Table: Stores TOTP secrets for multi-factor authentication
+CREATE TABLE IF NOT EXISTS user_mfa_secrets (
+    user_id INTEGER PRIMARY KEY REFERENCES system_users(user_id) ON DELETE CASCADE,
+    secret TEXT NOT NULL,
+    is_verified BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Insert default admin user if one doesn't exist
 INSERT INTO system_users (username, email, password_hash, role)
 SELECT 'admin', 'admin@nexus.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewweFdNWAd8aBi8q', 'admin'

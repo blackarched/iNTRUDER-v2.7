@@ -20,6 +20,7 @@ services:
     networks: [nexus-net]
     depends_on:
       nexus-db: { condition: service_healthy }
+      redis: { condition: service_started }
     healthcheck:
       test: "node -e \"require('https').get('https://localhost:8443/api/health', { rejectUnauthorized: false }, (res) => res.statusCode === 200 ? process.exit(0) : process.exit(1)).on('error', () => process.exit(1))\""
       interval: 30s
@@ -40,6 +41,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: nexus-redis
+    restart: unless-stopped
+    networks: [nexus-net]
+
+  motion-detector:
+    build: ./motion-detection
+    container_name: nexus-motion-detector
+    restart: unless-stopped
+    env_file: .env
+    networks: [nexus-net]
+    depends_on: [redis]
+
 
 networks:
   nexus-net: { driver: bridge }

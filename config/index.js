@@ -20,6 +20,12 @@ const config = {
 
   // Logging Level
   logLevel: process.env.LOG_LEVEL || 'info',
+
+  // Redis Connection Details
+  redis: {
+    host: process.env.REDIS_HOST || 'redis',
+    port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+  },
 };
 
 // Validate that critical secrets are provided in the environment

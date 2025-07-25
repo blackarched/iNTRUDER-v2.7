@@ -1,5 +1,11 @@
 const express = require('express');
-const { login, register, getProfile } = require('../controllers/authController');
+const {
+  login,
+  register,
+  getProfile,
+  setupMfa,
+  verifyMfa,
+} = require('../controllers/authController');
 const { validate } = require('../middleware/validatorMiddleware');
 const { authSchema } = require('../validators/authValidator');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -67,5 +73,8 @@ router.post('/login', validate(authSchema.login), login);
  * description: User profile data
  */
 router.get('/profile', authMiddleware, getProfile);
+
+router.post('/mfa/setup', authMiddleware, setupMfa);
+router.post('/mfa/verify', authMiddleware, verifyMfa);
 
 module.exports = router;

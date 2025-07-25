@@ -1,6 +1,7 @@
 module.exports = {
   testEnvironment: 'node',
   verbose: true,
+  modulePaths: ['<rootDir>/node_modules'],
   coverageThreshold: {
     global: {
       branches: 80,
