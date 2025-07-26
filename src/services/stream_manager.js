@@ -9,10 +9,10 @@ class StreamManager extends EventEmitter {
         this.activeStreams = new Map();
     }
 
-    async establishStreamConnection(nodeConfig) {
+    async establishStreamConnection(nodeConfig, retryCount = 0) {
         const { nodeId, ip, streamPath } = nodeConfig;
         const rtspUrl = `rtsp://${ip}${streamPath || '/video'}`;
-        logger.info(`Attempting to establish stream for node ${nodeId} at ${rtspUrl}`);
+        logger.info(`Attempting to establish stream for node ${nodeId} at ${rtspUrl} (retry: ${retryCount})`);
 
         if (this.activeStreams.has(nodeId)) {
             logger.warn(`Stream for node ${nodeId} is already active. Terminating old stream.`);
@@ -32,9 +32,11 @@ class StreamManager extends EventEmitter {
         const processor = {
             process: streamProcess,
             nodeId: nodeId,
+            lastChunkTime: Date.now(),
         };
 
         streamProcess.stdout.on('data', (chunk) => {
+            processor.lastChunkTime = Date.now();
             // In a real system, this chunk would be broadcast via the WebSocket server
             // this.nexusCenter.broadcastStreamData(nodeId, chunk);
         });
@@ -46,10 +48,22 @@ class StreamManager extends EventEmitter {
         streamProcess.on('close', (code) => {
             logger.info(`Stream process for node ${nodeId} terminated with code ${code}`);
             this.handleStreamDisconnection(nodeId);
+            if (retryCount < 5) {
+                setTimeout(() => this.establishStreamConnection(nodeConfig, retryCount + 1), 5000);
+            }
         });
         
         this.activeStreams.set(nodeId, processor);
         logger.info(`Stream established for node ${nodeId}`);
+
+        // Back-pressure mechanism
+        setInterval(() => {
+            if (Date.now() - processor.lastChunkTime > 10000) {
+                logger.warn(`No data received from stream ${nodeId} for 10 seconds. Restarting stream.`);
+                this.handleStreamDisconnection(nodeId);
+                this.establishStreamConnection(nodeConfig);
+            }
+        }, 5000);
     }
     
     handleStreamDisconnection(nodeId) {

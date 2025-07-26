@@ -29,8 +29,22 @@ const config = {
 };
 
 // Validate that critical secrets are provided in the environment
-if (!config.jwtSecret) {
-  throw new Error('FATAL ERROR: JWT_SECRET is not defined in the environment.');
-}
+const requiredEnvVars = [
+  'JWT_SECRET',
+  'DB_HOST',
+  'DB_PORT',
+  'DB_USER',
+  'DB_PASSWORD',
+  'DB_NAME',
+  'REDIS_HOST',
+  'REDIS_PORT',
+  'FRONTEND_ORIGIN',
+];
+
+requiredEnvVars.forEach((varName) => {
+  if (!process.env[varName]) {
+    throw new Error(`FATAL ERROR: Environment variable ${varName} is not defined.`);
+  }
+});
 
 module.exports = config;
