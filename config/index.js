@@ -49,6 +49,12 @@ initializeConfig();
   },
 };
 
+  // Security Configuration
+  security: {
+    blockedIps: process.env.BLOCKED_IPS ? process.env.BLOCKED_IPS.split(',') : [],
+  },
+};
+
 // Validate that critical secrets are provided in the environment
 const requiredEnvVars = [
   'JWT_SECRET',

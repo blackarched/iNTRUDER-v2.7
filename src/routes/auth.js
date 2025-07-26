@@ -1,6 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const bruteforce = require('../middleware/bruteForceMiddleware');
+const ipfilter = require('../middleware/ipFilterMiddleware');
 const {
   login,
   register,
@@ -13,6 +14,8 @@ const { authSchema } = require('../validators/authValidator');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+router.use(ipfilter);
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

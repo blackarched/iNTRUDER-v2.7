@@ -1,7 +1,4 @@
 const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const promClient = require('prom-client');
@@ -11,41 +8,20 @@ const apiRouter = require('./routes');
 const errorMiddleware = require('./middleware/errorMiddleware');
 const sanitizeMiddleware = require('./middleware/sanitizationMiddleware');
 const requestIdMiddleware = require('./middleware/requestIdMiddleware');
+const csrfMiddleware = require('./middleware/csrfMiddleware');
+const securityMiddleware = require('./middleware/securityMiddleware');
 
 const app = express();
 
 app.use(requestIdMiddleware);
 app.use(sanitizeMiddleware);
+app.use(csrfMiddleware);
+app.use(securityMiddleware);
 
-// Security Middleware
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "https://fonts.googleapis.com"],
-            styleSrc: ["'self'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", `wss://${config.corsOrigin}`],
-      },
-    },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
-    frameguard: {
-      action: 'deny',
-    },
-  })
-);
-app.use(cors({ origin: config.corsOrigin }));
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+app.get('/api/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
 });
-app.use('/api/', globalLimiter);
+
 app.use(express.json({ limit: '10kb' }));
 
 // API Docs

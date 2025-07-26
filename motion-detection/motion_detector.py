@@ -18,32 +18,35 @@ class MotionDetector:
         self.process_stream('rtsp://dummy-stream-url/video')
 
     def process_stream(self, stream_url):
-        cap = cv2.VideoCapture(stream_url)
-        if not cap.isOpened():
-            print(f"Error: Could not open video stream at {stream_url}")
-            return
+        try:
+            cap = cv2.VideoCapture(stream_url)
+            if not cap.isOpened():
+                print(f"Error: Could not open video stream at {stream_url}")
+                return
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Stream ended. Reconnecting...")
-                time.sleep(5)
-                cap.release()
-                cap = cv2.VideoCapture(stream_url)
-                continue
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    print("Stream ended. Reconnecting...")
+                    time.sleep(5)
+                    cap.release()
+                    cap = cv2.VideoCapture(stream_url)
+                    continue
 
-            fg_mask = self.background_subtractor.apply(frame)
-            # Apply some morphological operations to reduce noise
-            fg_mask = cv2.erode(fg_mask, None, iterations=2)
-            fg_mask = cv2.dilate(fg_mask, None, iterations=2)
+                fg_mask = self.background_subtractor.apply(frame)
+                # Apply some morphological operations to reduce noise
+                fg_mask = cv2.erode(fg_mask, None, iterations=2)
+                fg_mask = cv2.dilate(fg_mask, None, iterations=2)
 
-            motion_pixels = cv2.countNonZero(fg_mask)
+                motion_pixels = cv2.countNonZero(fg_mask)
 
-            if motion_pixels > self.motion_threshold:
-                self.trigger_motion_event(stream_url, motion_pixels)
+                if motion_pixels > self.motion_threshold:
+                    self.trigger_motion_event(stream_url, motion_pixels)
 
-            # A short delay to prevent overwhelming the CPU
-            time.sleep(0.1)
+                # A short delay to prevent overwhelming the CPU
+                time.sleep(0.1)
+        except Exception as e:
+            print(f"An error occurred while processing the stream: {e}")
 
     def trigger_motion_event(self, stream_url, intensity):
         event_data = {
