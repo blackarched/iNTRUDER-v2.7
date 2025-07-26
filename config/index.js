@@ -1,30 +1,51 @@
 require('dotenv').config();
+const { getSecret } = require('./services/vault');
 
-const config = {
-  // Server Configuration
-  port: process.env.PORT || 8443,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  corsOrigin: process.env.FRONTEND_ORIGIN || `https://localhost:${process.env.PORT || 8443}`,
+let config;
 
-  // JSON Web Token Secret
-  jwtSecret: process.env.JWT_SECRET,
+async function initializeConfig() {
+  const secrets = await getSecret('secret/data/nexus');
+  config = {
+    // Server Configuration
+    port: process.env.PORT || 8443,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    corsOrigin: process.env.FRONTEND_ORIGIN || `https://localhost:${process.env.PORT || 8443}`,
 
-  // Database Connection Details
-  db: {
-    host: process.env.DB_HOST || 'nexus-db',
-    port: parseInt(process.env.DB_PORT, 10) || 5432,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    name: process.env.DB_NAME,
-  },
+    // JSON Web Token Secret
+    jwtSecret: secrets.JWT_SECRET,
 
-  // Logging Level
-  logLevel: process.env.LOG_LEVEL || 'info',
+    // Database Connection Details
+    db: {
+      host: secrets.DB_HOST || 'nexus-db',
+      port: parseInt(secrets.DB_PORT, 10) || 5432,
+      user: secrets.DB_USER,
+      password: secrets.DB_PASSWORD,
+      name: secrets.DB_NAME,
+    },
 
-  // Redis Connection Details
-  redis: {
-    host: process.env.REDIS_HOST || 'redis',
-    port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+    // Logging Level
+    logLevel: process.env.LOG_LEVEL || 'info',
+
+    // Redis Connection Details
+    redis: {
+      host: secrets.REDIS_HOST || 'redis',
+      port: parseInt(secrets.REDIS_PORT, 10) || 6379,
+    },
+
+    // Vault Configuration
+    vault: {
+      endpoint: process.env.VAULT_ENDPOINT,
+      token: process.env.VAULT_TOKEN,
+    },
+  };
+}
+
+initializeConfig();
+
+  // Vault Configuration
+  vault: {
+    endpoint: process.env.VAULT_ENDPOINT,
+    token: process.env.VAULT_TOKEN,
   },
 };
 
@@ -39,6 +60,8 @@ const requiredEnvVars = [
   'REDIS_HOST',
   'REDIS_PORT',
   'FRONTEND_ORIGIN',
+  'VAULT_ENDPOINT',
+  'VAULT_TOKEN',
 ];
 
 requiredEnvVars.forEach((varName) => {

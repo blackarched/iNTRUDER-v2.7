@@ -3,6 +3,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const authRouter = require('./auth');
 const nodesRouter = require('./nodes');
+const healthRouter = require('./health');
 
 const router = express.Router();
 const swaggerOptions = {
@@ -20,7 +21,7 @@ const swaggerOptions = {
 const specs = swaggerJsdoc(swaggerOptions);
 
 router.use('/docs', swaggerUi.serve, swaggerUi.setup(specs));
-router.get('/health', (req, res) => res.status(200).json({ status: 'API Operational' }));
+router.use('/', healthRouter);
 router.use('/auth', authRouter);
 router.use('/nodes', nodesRouter);
 

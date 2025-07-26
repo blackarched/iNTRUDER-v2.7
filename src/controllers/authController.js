@@ -5,6 +5,11 @@ const qrcode = require('qrcode');
 const config = require('../../config');
 const db = require('../services/db');
 
+/**
+ * @description Register a new user.
+ * @route POST /api/auth/register
+ * @access Public
+ */
 exports.register = async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
@@ -19,6 +24,11 @@ exports.register = async (req, res, next) => {
   }
 };
 
+/**
+ * @description Set up MFA for the current user.
+ * @route POST /api/auth/mfa/setup
+ * @access Private
+ */
 exports.setupMfa = async (req, res, next) => {
   try {
     const { userId } = req.user;
@@ -43,6 +53,11 @@ exports.setupMfa = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * @description Verify MFA for the current user.
+ * @route POST /api/auth/mfa/verify
+ * @access Private
+ */
 exports.verifyMfa = async (req, res, next) => {
   try {
     const { userId } = req.user;
@@ -71,6 +86,11 @@ exports.verifyMfa = async (req, res, next) => {
   }
 };
 
+/**
+ * @description Log in a user.
+ * @route POST /api/auth/login
+ * @access Public
+ */
 exports.login = async (req, res, next) => {
   try {
     const { email, password, mfaToken } = req.body;

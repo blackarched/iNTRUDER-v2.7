@@ -15,6 +15,38 @@ class RecordingEngine {
     this.recordingSessions = new Map();
   }
 
+  generateOutputPath(nodeId) {
+    const outputDir = path.join(__dirname, '..', '..', 'recordings', String(nodeId));
+    fs.mkdirSync(outputDir, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    return path.join(outputDir, `${timestamp}.mp4`);
+  }
+
+  createFfmpegProcess(rtspUrl, outputPath) {
+    const ffmpegArgs = [
+      '-i', rtspUrl,
+      '-c:v', 'libx264',
+      '-preset', 'veryfast',
+      '-crf', '23',
+      '-an',
+      outputPath,
+    ];
+    return spawn('ffmpeg', ffmpegArgs);
+  }
+
+  handleFfmpegEvents(ffmpegProcess, nodeId, outputPath) {
+    ffmpegProcess.stderr.on('data', (data) => {
+      logger.debug(`[FFMPEG REC ${nodeId}]: ${data}`);
+    });
+
+    ffmpegProcess.on('close', (code) => {
+      logger.info(`Recording process for node ${nodeId} finished with code ${code}.`);
+      this.recordingSessions.delete(nodeId);
+      recordingSessions.dec();
+      // Here you would update the database record for the session
+    });
+  }
+
   async startRecording(nodeId) {
     if (this.recordingSessions.has(nodeId)) {
       logger.warn(`Recording session for node ${nodeId} is already active.`);
@@ -29,26 +61,8 @@ class RecordingEngine {
       }
       const node = rows[0];
       const rtspUrl = `rtsp://${node.ip_address}:${node.port}${node.stream_path || '/video'}`;
-      const outputDir = path.join(__dirname, '..', '..', 'recordings', String(nodeId));
-      fs.mkdirSync(outputDir, { recursive: true });
-
-      const timestamp = new Date().toISOString().replace(/:/g, '-');
-      const outputPath = path.join(outputDir, `${timestamp}.mp4`);
-
-      const ffmpegArgs = [
-        '-i', rtspUrl,
-        '-c:v', 'libx264',
-        '-preset', 'veryfast',
-        '-crf', '23',
-        '-an',
-        outputPath,
-      ];
-
-      const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
-
-      ffmpegProcess.stderr.on('data', (data) => {
-        logger.debug(`[FFMPEG REC ${nodeId}]: ${data}`);
-      });
+      const outputPath = this.generateOutputPath(nodeId);
+      const ffmpegProcess = this.createFfmpegProcess(rtspUrl, outputPath);
 
       const session = {
         nodeId,
@@ -58,17 +72,13 @@ class RecordingEngine {
       };
 
       this.recordingSessions.set(nodeId, session);
-
-      ffmpegProcess.on('close', (code) => {
-        logger.info(`Recording process for node ${nodeId} finished with code ${code}.`);
-        this.recordingSessions.delete(nodeId);
-        // Here you would update the database record for the session
-      });
+      this.handleFfmpegEvents(ffmpegProcess, nodeId, outputPath);
 
       logger.info(`Started recording for node ${nodeId}. Output: ${outputPath}`);
       return session;
     } catch (error) {
       logger.error(`Failed to start recording for node ${nodeId}: ${error.message}`);
+      recordingSessions.dec();
     }
   }
 

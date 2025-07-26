@@ -4,7 +4,7 @@ const { AsyncLocalStorage } = require('async_hooks');
 
 const asyncLocalStorage = new AsyncLocalStorage();
 
-const { combine, timestamp, json, colorize, align, printf } = winston.format;
+const { combine, timestamp, json, colorize, align, printf, splat, simple } = winston.format;
 
 // Configuration for logging to rotating files
 const fileRotateTransport = new winston.transports.DailyRotateFile({
@@ -17,13 +17,14 @@ const fileRotateTransport = new winston.transports.DailyRotateFile({
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
-  // Use JSON format for file logs
   format: combine(
-    timestamp(),
+    timestamp({
+      format: 'YYYY-MM-DD HH:mm:ss'
+    }),
+    splat(),
     json()
   ),
   transports: [
-    // Always log to rotating files
     fileRotateTransport
   ],
   // Handle uncaught exceptions and rejections
@@ -43,14 +44,12 @@ const addRequestId = winston.format((info) => {
   return info;
 });
 
-// For development, add a human-readable console logger
 if (process.env.NODE_ENV !== 'production') {
   logger.add(new winston.transports.Console({
     format: combine(
-      addRequestId(),
       colorize(),
-      timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      align(),
+      simple(),
+      addRequestId(),
       printf(info => `${info.timestamp} [${info.requestId || 'N/A'}] ${info.level}: ${info.message}`)
     ),
   }));

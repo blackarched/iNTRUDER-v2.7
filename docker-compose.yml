@@ -22,10 +22,19 @@ services:
       nexus-db: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail https://localhost:8443/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl --fail https://localhost:8443/api/ready || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
 
   nexus-db:
     image: postgres:15-alpine

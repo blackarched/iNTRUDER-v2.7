@@ -1,5 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const bruteforce = require('../middleware/bruteForceMiddleware');
 const {
   login,
   register,
@@ -65,7 +66,7 @@ router.post('/register', validate(authSchema.register), register);
  * '200':
  * description: Login successful, returns JWT token
  */
-router.post('/login', loginLimiter, validate(authSchema.login), login);
+router.post('/login', bruteforce.prevent, loginLimiter, validate(authSchema.login), login);
 
 /**
  * @openapi

@@ -1,36 +1,53 @@
-const logger = require('../services/logger');
+const AppError = require('../utils/errorFormatter');
+const { logger } = require('../services/logger');
+
+const handleJoiError = (err) => {
+  const errors = err.details.map((el) => el.message);
+  const message = `Invalid input data. ${errors.join('. ')}`;
+  return new AppError(message, 400);
+};
+
+const handleDuplicateFieldsDB = (err) => {
+  const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
+  const message = `Duplicate field value: ${value}. Please use another value!`;
+  return new AppError(message, 400);
+};
+
+const sendErrorDev = (err, res) => {
+  res.status(err.statusCode).json({
+    status: err.status,
+    error: err,
+    message: err.message,
+    stack: err.stack,
+  });
+};
+
+const sendErrorProd = (err, res) => {
+  if (err.isOperational) {
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+    });
+  } else {
+    logger.error('ERROR 💥', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Something went very wrong!',
+    });
+  }
+};
 
 module.exports = (err, req, res, next) => {
-  if (err.isJoi) {
-    return res.status(400).json({
-      type: 'Validation Error',
-      details: err.details.map((d) => d.message),
-    });
-  }
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
 
-  if (err.code === '23505') { // Unique constraint violation in Postgres
-    return res.status(409).json({
-      type: 'Conflict',
-      message: 'A record with the provided information already exists.',
-    });
-  }
+  if (process.env.NODE_ENV === 'development') {
+    sendErrorDev(err, res);
+  } else if (process.env.NODE_ENV === 'production') {
+    let error = { ...err };
+    if (error.isJoi) error = handleJoiError(error);
+    if (error.code === '23505') error = handleDuplicateFieldsDB(error);
 
-  // Log the error for debugging purposes
-  logger.error(err.message, {
-    stack: err.stack,
-    path: req.path,
-    method: req.method,
-  });
-
-  if (process.env.NODE_ENV === 'production' && !err.isOperational) {
-    return res.status(500).json({ error: 'An unexpected error occurred.' });
+    sendErrorProd(error, res);
   }
-  
-  if (res.headersSent) {
-    return next(err);
-  }
-
-  return res.status(err.statusCode || 500).json({
-    error: err.message || 'Internal Server Error',
-  });
 };
