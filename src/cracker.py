@@ -1,45 +1,61 @@
-from scapy.all import *
+import subprocess
+import os
+import logging
 
-def crack_handshake(handshake_file, wordlist_file):
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def crack_handshake(handshake_file, wordlist_file, bssid):
     """
-    Attempts to crack a WPA/WPA2 handshake using a wordlist.
+    Attempts to crack a WPA/WPA2 handshake using aircrack-ng.
     """
+    if not os.path.exists(handshake_file):
+        logging.error(f"Handshake file not found at {handshake_file}")
+        return
+    if not os.path.exists(wordlist_file):
+        logging.error(f"Wordlist file not found at {wordlist_file}")
+        return
+
+    logging.info(f"Attempting to crack {handshake_file} with {wordlist_file} for BSSID {bssid}...")
+
+    command = [
+        "aircrack-ng",
+        "-w", wordlist_file,
+        "-b", bssid,
+        handshake_file
+    ]
+
     try:
-        packets = rdpcap(handshake_file)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate()
+
+        if "KEY FOUND!" in stdout:
+            logging.info("Key found!")
+            # Extract and print the key
+            for line in stdout.splitlines():
+                if "KEY FOUND!" in line:
+                    print(line)
+                    break
+        elif "No matching network found" in stderr:
+            logging.info("No matching network found for the specified BSSID.")
+        else:
+            logging.info("Password not found in the wordlist.")
+
     except FileNotFoundError:
-        print(f"Error: Handshake file not found at {handshake_file}")
-        return
-
-    eapol_packets = [p for p in packets if p.haslayer(EAPOL)]
-    if len(eapol_packets) < 2:
-        print("Error: Not enough EAPOL packets in the capture file.")
-        return
-
-    with open(wordlist_file, 'r', encoding='utf-8', errors='ignore') as f:
-        for password in f:
-            password = password.strip()
-            # This is a placeholder for the actual cracking logic, which is complex.
-            # A real implementation would use a library like pyrit or aircrack-ng.
-            # For the purpose of this demonstration, we will just simulate the process.
-            if len(password) >= 8: # WPA passwords must be at least 8 characters
-                print(f"Trying password: {password}")
-                # In a real scenario, you would use the password to derive the PMK
-                # and then use that to check against the handshake.
-                # This is a complex process and is beyond the scope of this example.
-
-    print("\n--- Cracking Complete ---")
-    print("Password not found in the wordlist.")
+        logging.error("aircrack-ng not found. Please make sure it is installed and in your PATH.")
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
 
 if __name__ == '__main__':
-    # Replace with your file paths
+    # Replace with your file paths and BSSID
     handshake_file = "handshake.pcap"
     wordlist_file = "wordlist.txt"
+    bssid = "00:11:22:33:44:55"
 
     # Create a dummy wordlist for testing
     with open(wordlist_file, "w") as f:
         f.write("password123\n")
         f.write("qwertyuiop\n")
 
-    # The cracking logic is a placeholder, so this will not actually
-    # crack a real handshake.
-    crack_handshake(handshake_file, wordlist_file)
+    # This will likely fail unless you have a valid handshake file and aircrack-ng installed.
+    # The purpose of this is to demonstrate the integration.
+    crack_handshake(handshake_file, wordlist_file, bssid)

@@ -8,11 +8,11 @@ INTRUDER-v2.7 is a powerful and flexible WiFi penetration testing suite designed
 
 ## Features
 
-*   **Network Scanning:** Discover nearby wireless networks and their configurations.
-*   **Packet Sniffing:** Capture and analyze raw 802.11 frames.
-*   **Deauthentication Attacks:** Disrupt network connectivity by sending deauthentication frames.
-*   **WPA/WPA2 Handshake Capture:** Capture WPA/WPA2 handshakes for offline password cracking.
-*   **Password Cracking:** A built-in password cracker that supports various wordlists and cracking techniques.
+*   **Network Scanning:** Discover nearby wireless networks and their configurations using the `sniffer` module.
+*   **Packet Sniffing:** The `sniffer` module can be used to capture and analyze raw 802.11 frames.
+*   **Deauthentication Attacks:** The `deauth` module can be used to disrupt network connectivity by sending deauthentication frames.
+*   **WPA/WPA2 Handshake Capture:** The `sniffer` module can be used to capture WPA/WPA2 handshakes for offline password cracking.
+*   **Password Cracking:** The `cracker` module uses `aircrack-ng` to crack captured WPA/WPA2 handshakes.
 *   **Modular Architecture:** Easily extend the tool with new modules and attacks.
 
 ## Installation
@@ -25,29 +25,40 @@ cd intruder-v2.7
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the tool
-python intruder.py --help
+# Make sure you have aircrack-ng installed
+# On Debian/Ubuntu:
+sudo apt-get install aircrack-ng
 ```
 
 ## Usage Examples
 
 ### Scan for Networks
 
+To scan for networks, you need to provide the name of your wireless interface.
+
 ```bash
-python intruder.py scan
+python src/intruder.py scan --interface wlan0
 ```
 
 ### Capture a WPA Handshake
 
+To capture a WPA handshake, you need to provide the BSSID, channel, and output file for the capture.
+
 ```bash
-python intruder.py capture --bssid <BSSID> --channel <channel> --output handshake.pcap
+python src/intruder.py capture --bssid <BSSID> --channel <channel> --output handshake.pcap --interface wlan0
 ```
 
 ### Crack a Captured Handshake
 
+To crack a captured handshake, you need to provide the path to the handshake file, a wordlist, and the BSSID of the target network.
+
 ```bash
-python intruder.py crack --handshake handshake.pcap --wordlist /path/to/wordlist.txt
+python src/intruder.py crack --handshake handshake.pcap --wordlist /path/to/wordlist.txt --bssid <BSSID>
 ```
+
+## Development
+
+For information on how to contribute to the project, please see our `AGENTS.md` file. For API documentation, please see `docs/api.md`.
 
 ## Contributing
 
