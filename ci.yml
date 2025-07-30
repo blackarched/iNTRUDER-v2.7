@@ -1,0 +1,55 @@
+# .github/workflows/ci.yml
+name: iNTRUDER CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y aircrack-ng mdk4 reaver hping3 wireless-tools iw
+        
+    - name: Install Python dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Run linting and basic checks (e.g., flake8, mypy - if you add them)
+      run: |
+        # Example: pip install flake8 && flake8 .
+        echo "Linting checks would go here."
+
+    # Note: Running full integration tests that require a real WiFi card
+    # is not feasible in a standard GitHub Actions runner.
+    # These tests would need to be run on a dedicated, self-hosted runner.
+    - name: Run unit tests (if any)
+      run: |
+        echo "Unit tests would go here."
+        # Example: python -m unittest discover tests
+
+  # The deploy job remains largely the same but is more of a template.
+  # Real-world deployment would require secure handling of SSH keys.
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+    - name: Deploy to production server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.PROD_HOST }}
+        username: ${{ secrets.PROD_USERNAME }}
+        key: ${{ secrets.PROD_SSH_KEY }}
+        script: |
+          cd /opt/intruder
+          git pull
+          sudo systemctl restart intruder
